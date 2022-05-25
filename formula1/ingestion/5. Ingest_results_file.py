@@ -5,6 +5,11 @@ v_data_source = dbutils.widgets.get("p_data_source")
 
 # COMMAND ----------
 
+dbutils.widgets.text("p_file_date", "2021-03-28")
+v_file_date = dbutils.widgets.get("p_file_date")
+
+# COMMAND ----------
+
 # MAGIC %run "../includes/configuration"
 
 # COMMAND ----------
@@ -37,7 +42,7 @@ results_schema = StructType(fields=[StructField("resultId", IntegerType(), False
 
 # COMMAND ----------
 
-results_df = spark.read.schema(results_schema).json(f"{raw_folder_path}/results.json")
+results_df = spark.read.schema(results_schema).json(f"{raw_folder_path}/{v_file_date}/results.json")
 display(results_df)
 
 # COMMAND ----------
@@ -58,9 +63,64 @@ results_final_df = results_df.withColumnRenamed("resultId", "result_id") \
                              .withColumnRenamed("fastestLapSpeed", "fastest_lap_speed") \
                              .withColumn("ingestion_date", current_timestamp()) \
                              .withColumn("data_source", lit(v_data_source)) \
+                             .withColumn("file_date", lit(v_file_date)) \
                              .drop(results_df["statusId"])
 
 display(results_final_df)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC 
+# MAGIC ### Method 1 of Incremental Load
+
+# COMMAND ----------
+
+# for each_race_id in results_final_df.select("race_id").distinct().collect():
+#     if(spark._jsparkSession.catalog().tableExists("f1_processed.results")):
+#         spark.sql(f"ALTER TABLE f1_processed.results DROP IF EXISTS PARTITION (race_id = {each_race_id.race_id})")
+
+# COMMAND ----------
+
+# results_final_df.write.mode("append").format("parquet").partitionBy("race_id").saveAsTable("f1_processed.results")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC 
+# MAGIC ### Method 2 of Incremental Load
+
+# COMMAND ----------
+
+# %sql
+# DROP TABLE IF EXISTS f1_processed.results
+
+# COMMAND ----------
+
+# def re_arrange_partition_column(input_df, partition_column):
+#     column_list = []
+#     for column_name in input_df.schema.names:
+#         if column_name != partition_column:
+#             column_list.append(column_name)
+#     column_list.append(partition_column)
+# #     print(column_list)
+
+#     output_df = input_df.select(column_list)
+#     return output_df
+
+# results_final_df = re_arrange_partition_column(input_df, partition_column)
+
+# spark.conf.set("spark.sql.sources.partitionOverwriteMode", "dynamic")
+
+# if (spark._jsparkSession.catalog().tableExists("f1_processed.results")):
+#     # Expects the df to have the partition column at the end
+#     results_final_df.write.mode("overwrite").insertInto("f1_processed.results")
+# else:
+#     results_final_df.write.mode("overwrite").format("parquet").partitionBy("race_id").saveAsTable("f1_processed.results")
+
+# COMMAND ----------
+
+overwrite_partition(results_final_df, 'f1_processed', 'results', 'race_id')
 
 # COMMAND ----------
 
@@ -68,11 +128,11 @@ display(results_final_df)
 
 # COMMAND ----------
 
-results_final_df.write.mode("overwrite").format("parquet").saveAsTable("f1_processed.results")
+display(results_final_df)
 
 # COMMAND ----------
 
-display(spark.read.parquet(f"{processed_folder_path}/results"))
+# display(spark.read.parquet(f"{processed_folder_path}/results"))
 
 # COMMAND ----------
 
@@ -86,4 +146,16 @@ display(spark.read.parquet(f"{processed_folder_path}/results"))
 
 # COMMAND ----------
 
+# MAGIC %sql
+# MAGIC SELECT race_id, COUNT(1) as count
+# MAGIC FROM f1_processed.results
+# MAGIC GROUP BY race_id
+# MAGIC ORDER BY race_id DESC;
+
+# COMMAND ----------
+
 dbutils.notebook.exit("Success")
+
+# COMMAND ----------
+
+

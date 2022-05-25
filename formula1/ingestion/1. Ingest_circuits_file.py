@@ -13,6 +13,11 @@ v_data_source = dbutils.widgets.get("p_data_source")
 
 # COMMAND ----------
 
+dbutils.widgets.text("p_file_date", "2021-03-21")
+v_file_date = dbutils.widgets.get("p_file_date")
+
+# COMMAND ----------
+
 print(v_data_source)
 
 # COMMAND ----------
@@ -56,7 +61,7 @@ circuits_schema = StructType(fields=[StructField("circuitId", IntegerType(), Fal
 
 # COMMAND ----------
 
-circuits_df = spark.read.schema(circuits_schema).csv(f"{raw_folder_path}/circuits.csv", header=True)
+circuits_df = spark.read.schema(circuits_schema).csv(f"{raw_folder_path}/{v_file_date}/circuits.csv", header=True)
 
 # COMMAND ----------
 
@@ -113,7 +118,8 @@ circuits_renamed_df = circuits_selected_df.withColumnRenamed("circuitId", "circu
 .withColumnRenamed("lat", "latitude") \
 .withColumnRenamed("lng", "longitude") \
 .withColumnRenamed("alt", "altitude") \
-.withColumn("data_source", lit(v_data_source))
+.withColumn("data_source", lit(v_data_source)) \
+.withColumn("file_date", lit(v_file_date))
 
 display(circuits_renamed_df)
 

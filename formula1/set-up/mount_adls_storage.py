@@ -52,6 +52,10 @@ mount_adls("presentation")
 
 # COMMAND ----------
 
+mount_adls("demo")
+
+# COMMAND ----------
+
 dbutils.fs.ls("/mnt/formula1dllearning/raw")
 
 # COMMAND ----------
@@ -61,6 +65,10 @@ dbutils.fs.ls("/mnt/formula1dllearning/processed")
 # COMMAND ----------
 
 dbutils.fs.ls("/mnt/formula1dllearning/presentation")
+
+# COMMAND ----------
+
+dbutils.fs.ls("/mnt/formula1dllearning/demo")
 
 # COMMAND ----------
 
